@@ -1,4 +1,4 @@
-# Docker
+# Docker (from arden labs course)
 
 ## 1.1 The "Why" of Containers
 
@@ -132,29 +132,29 @@ Like the above
 
 #### Commands
 
-To see last container that was started
+- To see last container that was started
 ```bash
 docker ps -l
 ```
 
-To see quickly only show IDs
+- To see quickly only show IDs
 ```bash
 docker ps -q
 ```
 
-To follow to see ends of logs use `-f`, and use `--tail` shows only last log lines instead of spanning all lines.
+- To follow to see ends of logs use `-f`, and use `--tail` shows only last log lines instead of spanning all lines.
 ```bash
 docker logs <container_id> -f --tail 1
 ```
 
-to stop:
+- to stop a container:
 ```bash
 docker stop <image>
 ```
 docker stop takes 10 seconds to stop. sends unix signal TERM to shutdown politely. Might handle it or it'll just kill it after a timeout. sends a KILL signal which on UNIX cannot be intercepted. So that's why after 10 seconds container gets killed.
 
 
-to list all containers including killed ones:
+- to list all containers including killed ones:
 ```bash
 docker ps -a
 ```
@@ -177,6 +177,8 @@ To attach to last container:
 docker attach $(docker ps -ql)
 ```
 
+`$(docker ps -ql)` remember gives you the id of the last container
+
 To restart a stopped container:
 ```bash
 15:21 $ docker attach 6182ad2faa27
@@ -186,4 +188,82 @@ You cannot attach to a stopped container, start it first
 6182ad2faa27
 ```
 
-if you hit ctrl-c you stop a container
+if you hit ctrl-c you stop a container. If you hit ^p^q you exit a container but you don't stop it so you can run `docker attach <container_id>` again.
+
+## 2.1 Images, Layers & Container Images
+
+An **image** is a bunch of files and some metadata. It's the root file system which is at `/`
+
+What is the metadata? Some of it for aesthetic purposes (who authored the image which has no use at runtime but for humans) and the command that is run when we execute the container, env variables.
+
+Images are made of layers, each layer can add files and metadata. We use layers to save time and bandwidth. Layers can be reused between images. A layer could be a centOS base layer. Another layer could be the code. Another layer could be the config.
+
+Most layers are read-only, but there is a read-write layer on top. We can't change most layers, but if we need to write anything, has to be done in read-write layer, leaves other layers unchanged.
+
+An image is a read-only file system, cannot change an image. What's a container? It's a set of processes running in  read-write copy of filesystem (namespaces and groups, part of linux.) They give processes illusions that they are running in own environment.
+
+Even though images are read only, we make changes to the container which we then transform into a new layer and a new image is made by stacking the new layer on top of the old image.
+
+An image can be namespaced by user like `jwan622/<image>` which is my own version of the image.
+If tehre's a different host where the image is located you can do `quay.io/<user or organization>/<image>`. This is done if you want to host the image outside of Docker Hub.
+
+
+Let's talk about image tags
+
+When we run `docker run <image>` we default use the latest tag. We can specify tag by running:
+
+```bash
+docker run -ti ubuntu:12.04
+```
+
+We use tags when:
+- going to production
+- when recording a procedure into a script
+- to ensure same version will be used everwhere
+
+don't specify tags when you want the latest version, it's that by default.
+
+#### Commands
+This will show all images on machine:
+```bash
+docker images
+```
+
+To find images:
+```bash
+docker search zookeeper
+NAME                               DESCRIPTION                                     STARS     OFFICIAL   AUTOMATED
+zookeeper                          Apache ZooKeeper is an open-source server wh…   1182      [OK]
+jplock/zookeeper                   Builds a docker image for Zookeeper version …   165                  [OK]
+wurstmeister/zookeeper                                                             159                  [OK]
+```
+
+
+## 2.2 Building Images Interactively
+
+Let's build our own images interactively
+We will:
+1. create a container
+2. run commands to install software in the container
+3. review changes with `docker diff`
+4. turn the container into an image using `docker commit`
+5. add tags to the image with `docker tag`
+
+to create an image from a container, run `docker commit <container_id>`
+
+
+But this is cumbersome and long and you have a build a new container each time. Let's use an automated process next.
+
+#### Commands
+
+- to turn container into image:
+```bash
+docker commit <container_id>
+```
+The output will be the id of the new image
+
+- To find out what ends up in an image from a container: 
+This shows us content of read-write layer and which files were changed in the container.
+```bash
+docker diff <container_id>
+```
